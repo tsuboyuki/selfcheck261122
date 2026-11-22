@@ -51,14 +51,13 @@ button{font:inherit;color:inherit}
 .datebar button:disabled{opacity:.3}
 .datebar .mid{text-align:center;flex:1}
 .datebar .d{font-weight:700;font-size:18px}
-.item{display:flex;gap:12px;align-items:flex-start;padding:10px 2px;border-top:1px solid var(--line);cursor:pointer}
+.item{display:flex;gap:8px;align-items:center;padding:9px 2px;border-top:1px solid var(--line)}
 .item:first-of-type{border-top:none}
-.item input{position:absolute;opacity:0;pointer-events:none}
-.box{flex:0 0 30px;height:30px;border-radius:8px;border:2px solid var(--box);display:flex;align-items:center;justify-content:center;margin-top:-2px;transition:all .12s}
-.item input:checked+.box{background:var(--accent);border-color:var(--accent)}
-.item input:checked+.box::after{content:"";width:9px;height:16px;border:solid #fff;border-width:0 3px 3px 0;transform:rotate(45deg) translate(-1px,-2px)}
 .item .txt{flex:1;font-size:15.5px}
-.item input:checked~.txt{color:var(--sub)}
+.vb{flex:0 0 44px;height:40px;border-radius:10px;border:1.5px solid var(--box);background:transparent;font-size:19px;color:var(--sub);display:flex;align-items:center;justify-content:center;padding:0;transition:all .1s}
+.vb.ok.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.vb.ng.on{background:var(--warn);border-color:var(--warn);color:#fff}
+.legend{text-align:center;font-size:12.5px;color:var(--sub);margin:-4px 0 12px}
 textarea,input[type=text],select{width:100%;font:inherit;font-size:16px;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px}
 textarea{min-height:110px;resize:vertical}
 nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:10}
@@ -115,9 +114,17 @@ function load(){
   try{
     const s = localStorage.getItem(LS_KEY);
     if(s){ const o = JSON.parse(s); const d = defaultState();
-      return {...d, ...o, config:{...d.config, ...(o.config||{})}, records:o.records||{}, meta:o.meta||{}}; }
+      return migrate({...d, ...o, config:{...d.config, ...(o.config||{})}, records:o.records||{}, meta:o.meta||{}}); }
   }catch(e){ console.error(e); }
   return defaultState();
+}
+// v1.1以前（チェック式）の記録を3段階式に変換：チェック済み→できた(1)、未チェック→機会なし(0)
+function migrate(st){
+  for(const r of Object.values(st.records||{})){
+    if(r.checks && !r.v){ r.v = {}; for(const [id,c] of Object.entries(r.checks)) if(c) r.v[id] = 1; }
+    delete r.checks; if(!r.v) r.v = {};
+  }
+  return st;
 }
 let state = load();
 function save(){
@@ -138,6 +145,7 @@ const todayKey = () => keyOf(new Date(Date.now() - (state.config.dayStartHour||0
 const WD = '日月火水木金土';
 const fmtKey = k => { const d = parseKey(k); return `${d.getMonth()+1}月${d.getDate()}日（${WD[d.getDay()]}）`; };
 const pct = r => r == null ? '—' : Math.round(r*100) + '%';
+const okng = s => `○${s.ok}　✕${s.ng}`;
 function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove('show'), 1800); }
 
 /* ===== データ操作 ===== */
@@ -156,7 +164,7 @@ function dayIds(k){
 }
 function touch(k){
   let r = state.records[k];
-  if(!r) r = state.records[k] = {checks:{}, memo:''};
+  if(!r) r = state.records[k] = {v:{}, memo:''};
   if(!r.ids || k === todayKey()) r.ids = activeIds();
   r.updated = new Date().toISOString();
   return r;
@@ -165,9 +173,9 @@ function dayStat(k, catId){
   const r = state.records[k];
   let ids = dayIds(k);
   if(catId) ids = ids.filter(id => { const f = findItem(id); return f && f.cat.id === catId; });
-  if(!ids.length) return {checked:0, total:0, rate:null, recorded:!!r};
-  const checked = r ? ids.filter(id => r.checks[id]).length : 0;
-  return {checked, total:ids.length, rate: checked/ids.length, recorded:!!r};
+  let ok = 0, ng = 0;
+  if(r) for(const id of ids){ if(r.v[id] === 1) ok++; else if(r.v[id] === -1) ng++; }
+  return {ok, ng, none:ids.length-ok-ng, total:ids.length, rate:(ok+ng) ? ok/(ok+ng) : null, recorded:!!r};
 }
 function refreshTodayIds(){ const r = state.records[todayKey()]; if(r) r.ids = activeIds(); }
 
@@ -195,14 +203,14 @@ function renderHome(){
   }
   if(g.length) h += `<div class="card"><h2>行動指針</h2><ul class="guide">${g.map(s => `<li>${esc(s)}</li>`).join('')}</ul></div>`;
   h += `<div class="card"><h2>今日の達成 <span class="cnt">${fmtKey(tk)}</span></h2>
-    <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px"><span class="big">${pct(st.rate ?? 0)}</span>
-    <span class="muted">${st.checked} / ${st.total} 項目</span></div>
+    <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px"><span class="big">${pct(st.rate)}</span>
+    <span class="muted">できた ${st.ok}　できなかった ${st.ng}　機会なし ${st.none}</span></div>
     <div class="bar"><i style="width:${(st.rate||0)*100}%"></i></div>
-    <div style="margin-top:12px">${cats().map(c => { const s = dayStat(tk, c.id); return `<div class="catrow"><span>${esc(c.name)}</span><span>${s.checked}/${s.total}</span><div class="bar"><i style="width:${(s.rate||0)*100}%"></i></div></div>`; }).join('')}</div>
+    <div style="margin-top:12px">${cats().map(c => { const s = dayStat(tk, c.id); return `<div class="catrow"><span>${esc(c.name)}</span><span>${pct(s.rate)}</span><div class="bar"><i style="width:${(s.rate||0)*100}%"></i></div></div>`; }).join('')}</div>
     <div style="margin-top:12px"><button class="btn" onclick="viewDate=todayKey();go('check')">チェックする</button></div></div>`;
-  let sum = 0, n = 0;
-  for(let i = 1; i <= 7; i++){ const s = dayStat(addDays(tk, -i)); if(s.recorded && s.rate != null){ sum += s.rate; n++; } }
-  h += `<div class="card"><h2>直近7日間（今日を除く）</h2><span class="big" style="font-size:28px">${n ? pct(sum/n) : '—'}</span> <span class="muted">平均達成率・記録 ${n} 日</span></div>`;
+  let ok = 0, ng = 0, n = 0;
+  for(let i = 1; i <= 7; i++){ const s = dayStat(addDays(tk, -i)); if(s.recorded){ ok += s.ok; ng += s.ng; n++; } }
+  h += `<div class="card"><h2>直近7日間（今日を除く）</h2><span class="big" style="font-size:28px">${(ok+ng) ? pct(ok/(ok+ng)) : '—'}</span> <span class="muted">達成率・○${ok} ✕${ng}・記録 ${n} 日</span></div>`;
   $('#view').innerHTML = h;
 }
 
@@ -214,14 +222,16 @@ function renderCheck(){
   const idset = new Set(ids);
   let h = `<div class="datebar"><button id="prev" aria-label="前の日">‹</button>
     <div class="mid"><div class="d">${fmtKey(k)}${k === tk ? '　今日' : ''}</div><div class="muted" id="sumline"></div></div>
-    <button id="next" aria-label="次の日" ${k >= tk ? 'disabled' : ''}>›</button></div>`;
+    <button id="next" aria-label="次の日" ${k >= tk ? 'disabled' : ''}>›</button></div>
+    <div class="legend">○＝できた　✕＝できなかった　押さない＝機会なし</div>`;
   if(!ids.length){ h += `<div class="card empty"><p>チェック項目がありません。</p><button class="btn" onclick="go('settings')">設定を開く</button></div>`; }
   for(const c of state.config.categories){
     const its = c.items.filter(i => idset.has(i.id));
     if(!its.length) continue;
     h += `<section class="card"><h2>${esc(c.name)} <span class="cnt" data-cat="${c.id}"></span></h2>`;
     for(const it of its){
-      h += `<label class="item"><input type="checkbox" data-id="${it.id}" ${r && r.checks[it.id] ? 'checked' : ''}><span class="box"></span><span class="txt">${esc(it.text)}</span></label>`;
+      const val = r ? r.v[it.id] : undefined;
+      h += `<div class="item"><span class="txt">${esc(it.text)}</span><button class="vb ok ${val === 1 ? 'on' : ''}" data-id="${it.id}" data-val="1" aria-label="できた">○</button><button class="vb ng ${val === -1 ? 'on' : ''}" data-id="${it.id}" data-val="-1" aria-label="できなかった">✕</button></div>`;
     }
     h += `</section>`;
   }
@@ -229,15 +239,18 @@ function renderCheck(){
   $('#view').innerHTML = h;
   const upd = () => {
     const s = dayStat(k);
-    $('#sumline').textContent = `${s.checked} / ${s.total}　${pct(s.rate ?? 0)}`;
-    document.querySelectorAll('[data-cat]').forEach(el => { const cs = dayStat(k, el.dataset.cat); el.textContent = `${cs.checked}/${cs.total}`; });
+    $('#sumline').textContent = `${okng(s)}　達成率 ${pct(s.rate)}`;
+    document.querySelectorAll('[data-cat]').forEach(el => { const cs = dayStat(k, el.dataset.cat); el.textContent = `${okng(cs)}　${pct(cs.rate)}`; });
   };
   upd();
   $('#prev').onclick = () => { viewDate = addDays(k, -1); renderCheck(); };
   $('#next').onclick = () => { if(k < tk){ viewDate = addDays(k, 1); renderCheck(); } };
-  document.querySelectorAll('.item input').forEach(cb => cb.addEventListener('change', () => {
-    const rec = touch(k);
-    if(cb.checked) rec.checks[cb.dataset.id] = true; else delete rec.checks[cb.dataset.id];
+  document.querySelectorAll('.vb').forEach(b => b.addEventListener('click', () => {
+    const rec = touch(k), id = b.dataset.id, val = +b.dataset.val;
+    if(rec.v[id] === val) delete rec.v[id]; else rec.v[id] = val;
+    const row = b.parentElement;
+    row.querySelector('.ok').classList.toggle('on', rec.v[id] === 1);
+    row.querySelector('.ng').classList.toggle('on', rec.v[id] === -1);
     save(); upd();
   }));
   const memo = $('#memo');
@@ -260,34 +273,35 @@ function renderHistory(){
   for(let d = 1; d <= dim; d++){
     const k = `${y}-${pad(m)}-${pad(d)}`, s = dayStat(k);
     const fut = k > tk;
-    const bg = (!fut && s.recorded && s.rate != null) ? `background:color-mix(in srgb, var(--accent) ${Math.round(15 + s.rate*85)}%, var(--bg));color:${s.rate > .5 ? '#fff' : 'inherit'}` : '';
-    h += `<div class="c ${k === tk ? 'today' : ''} ${fut ? 'future' : ''}" style="${bg}" data-k="${fut ? '' : k}">${d}<small>${!fut && s.recorded ? pct(s.rate) : ''}</small></div>`;
+    const bg = (!fut && s.rate != null) ? `background:color-mix(in srgb, var(--accent) ${Math.round(15 + s.rate*85)}%, var(--bg));color:${s.rate > .5 ? '#fff' : 'inherit'}` : '';
+    h += `<div class="c ${k === tk ? 'today' : ''} ${fut ? 'future' : ''}" style="${bg}" data-k="${fut ? '' : k}">${d}<small>${!fut && s.rate != null ? pct(s.rate) : ''}</small></div>`;
   }
   h += `</div><p class="muted" style="margin:8px 0 0">日付をタップすると、その日のチェックを確認・修正できます。</p></div>`;
 
   // 推移グラフ
   const days = []; for(let i = histRange - 1; i >= 0; i--) days.push(addDays(tk, -i));
-  const vals = days.map(k => { const s = dayStat(k); return s.recorded ? s.rate : null; });
+  const vals = days.map(k => dayStat(k).rate);
   h += `<div class="card"><h2>達成率の推移</h2><div class="seg">${[30,90,365].map(n => `<button data-r="${n}" class="${n === histRange ? 'on' : ''}">${n === 365 ? '1年' : n + '日'}</button>`).join('')}</div>${chartSvg(days, vals)}
-    <p class="muted" style="margin:6px 0 0">点：日別　線：7日移動平均（記録のある日のみ）</p></div>`;
+    <p class="muted" style="margin:6px 0 0">達成率＝できた÷（できた＋できなかった）　点：日別　線：7日移動平均</p></div>`;
 
   // カテゴリ別
   h += `<div class="card"><h2>カテゴリ別の平均 <span class="cnt">期間内</span></h2>`;
   for(const c of state.config.categories){
-    let ch = 0, tot = 0;
-    for(const k of days){ if(!state.records[k]) continue; const s = dayStat(k, c.id); ch += s.checked; tot += s.total; }
-    if(!tot && c.deleted) continue;
-    h += `<div class="catrow"><span>${esc(c.name)}${c.deleted ? '（削除済）' : ''}</span><span>${tot ? pct(ch/tot) : '—'}</span><div class="bar"><i style="width:${tot ? ch/tot*100 : 0}%"></i></div></div>`;
+    let ok = 0, ng = 0;
+    for(const k of days){ if(!state.records[k]) continue; const s = dayStat(k, c.id); ok += s.ok; ng += s.ng; }
+    const tot = ok + ng;
+    if(c.deleted) continue;
+    h += `<div class="catrow"><span>${esc(c.name)}${c.deleted ? '（削除済）' : ''}</span><span>${tot ? pct(ok/tot) : '—'}</span><div class="bar"><i style="width:${tot ? ok/tot*100 : 0}%"></i></div></div>`;
   }
   h += `</div>`;
 
   // 達成しにくい項目
   const agg = {};
   for(const k of days){ const r = state.records[k]; if(!r) continue;
-    for(const id of dayIds(k)){ (agg[id] ||= {c:0, t:0}); agg[id].t++; if(r.checks[id]) agg[id].c++; } }
-  const rank = Object.entries(agg).filter(([,v]) => v.t >= 3).map(([id,v]) => ({id, r:v.c/v.t})).sort((a,b) => a.r - b.r).slice(0,5);
-  h += `<div class="card"><h2>できていない項目 <span class="cnt">達成率の低い順</span></h2>`;
-  h += rank.length ? `<ul class="rank">${rank.map(x => { const f = findItem(x.id); return `<li><b>${pct(x.r)}</b><span>${esc(f ? f.item.text : x.id)}</span></li>`; }).join('')}</ul>` : `<p class="muted" style="margin:0">記録が3日分以上たまると表示されます。</p>`;
+    for(const id of dayIds(k)){ const x = r.v[id]; if(x !== 1 && x !== -1) continue; (agg[id] ||= {ok:0, ng:0}); if(x === 1) agg[id].ok++; else agg[id].ng++; } }
+  const rank = Object.entries(agg).filter(([,v]) => v.ng > 0 && v.ok + v.ng >= 3).map(([id,v]) => ({id, r:v.ok/(v.ok+v.ng), ng:v.ng})).sort((a,b) => a.r - b.r || b.ng - a.ng).slice(0,5);
+  h += `<div class="card"><h2>できていない項目 <span class="cnt">期間内・達成率の低い順</span></h2>`;
+  h += rank.length ? `<ul class="rank">${rank.map(x => { const f = findItem(x.id); return `<li><b>${pct(x.r)}</b><span>${esc(f ? f.item.text : x.id)}<br><small class="muted">できなかった ${x.ng} 回</small></span></li>`; }).join('')}</ul>` : `<p class="muted" style="margin:0">○か✕が3回以上ついた項目のうち、✕のあるものが表示されます。</p>`;
   h += `</div>`;
   $('#view').innerHTML = h;
 
@@ -353,7 +367,7 @@ function renderSettings(){
     <button class="btn sub" id="bk">バックアップを書き出す</button>
     <button class="btn sub" id="rs">バックアップから復元</button>
     <button class="btn sub" id="imp">項目ファイルを読み込む</button></div>`;
-  h += `<p class="muted" style="text-align:center">セルフチェック v1.1</p>`;
+  h += `<p class="muted" style="text-align:center">セルフチェック v1.2</p>`;
   $('#view').innerHTML = h;
 
   if(navigator.storage && navigator.storage.persisted) navigator.storage.persisted().then(p => { const el = $('#persist'); if(el) el.textContent = p ? '（保護モード：有効）' : ''; });
@@ -401,12 +415,12 @@ const toCsv = rows => '﻿' + rows.map(r => r.map(cell).join(',')).join('\r\n') 
 function exportCsv(){
   const keys = Object.keys(state.records).sort();
   if(!keys.length){ alert('まだ記録がありません。'); return; }
-  const checks = [['date','category_id','category','item_id','item','checked']];
-  const daily = [['date','checked','total','rate','memo']];
+  const checks = [['date','category_id','category','item_id','item','value']];
+  const daily = [['date','done','not_done','no_chance','total','rate','memo']];
   for(const k of keys){
     const r = state.records[k];
-    for(const id of dayIds(k)){ const f = findItem(id); checks.push([k, f ? f.cat.id : '', f ? f.cat.name : '', id, f ? f.item.text : '', r.checks[id] ? 1 : 0]); }
-    const s = dayStat(k); daily.push([k, s.checked, s.total, s.rate == null ? '' : s.rate.toFixed(4), r.memo || '']);
+    for(const id of dayIds(k)){ const f = findItem(id); checks.push([k, f ? f.cat.id : '', f ? f.cat.name : '', id, f ? f.item.text : '', r.v[id] === 1 ? 1 : r.v[id] === -1 ? -1 : 0]); }
+    const s = dayStat(k); daily.push([k, s.ok, s.ng, s.none, s.total, s.rate == null ? '' : s.rate.toFixed(4), r.memo || '']);
   }
   const items = [['category_id','category','item_id','item','status','order']];
   state.config.categories.forEach((c, ci) => c.items.forEach((it, ii) => items.push([c.id, c.name, it.id, it.text, (c.deleted || it.deleted) ? 'deleted' : 'active', `${ci+1}-${ii+1}`])));
@@ -425,7 +439,7 @@ function restoreBackup(o){
   const s = o && o.type === 'selfcheck-backup' ? o.state : null;
   if(!s || !s.config || !s.records){ alert('バックアップファイルではありません。'); return; }
   if(!confirm(`${Object.keys(s.records).length} 日分の記録を復元します。現在のデータは置き換えられます。よろしいですか？`)) return;
-  const d = defaultState(); state = {...d, ...s, config:{...d.config, ...s.config}, meta:s.meta || {}}; save(); toast('復元しました'); go('home');
+  const d = defaultState(); state = migrate({...d, ...s, config:{...d.config, ...s.config}, meta:s.meta || {}}); save(); toast('復元しました'); go('home');
 }
 function importConfig(o){
   if(!o || o.type !== 'selfcheck-config' || !Array.isArray(o.categories)){ alert('項目ファイルではありません。'); return; }
