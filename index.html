@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="セルフチェック">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#f4f2ee">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>セルフチェック</title>
+<style>
+:root{
+  --bg:#f4f2ee; --card:#ffffff; --text:#22211f; --sub:#77736c; --line:#e3dfd8;
+  --accent:#2f6f62; --accent-soft:#dcebe6; --warn:#b4562f; --box:#c9c4bb;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#161716; --card:#222423; --text:#ecebe8; --sub:#9a978f; --line:#353836;
+    --accent:#6fb8a6; --accent-soft:#25403a; --warn:#e08a63; --box:#5b5f5c; }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+  font-size:16px;line-height:1.55}
+main{padding:calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 86px);max-width:640px;margin:0 auto}
+h1{font-size:22px;margin:4px 2px 12px}
+h2{font-size:15px;margin:0 0 8px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+h2 .cnt{font-size:13px;color:var(--sub);font-weight:normal;white-space:nowrap}
+.card{background:var(--card);border-radius:14px;padding:14px 14px;margin:0 0 12px;border:1px solid var(--line)}
+.muted{color:var(--sub);font-size:13px}
+.guide{margin:0;padding:0;list-style:none}
+.guide li{padding:7px 0;border-bottom:1px solid var(--line);font-size:15.5px}
+.guide li:last-child{border-bottom:none}
+.big{font-size:40px;font-weight:700;line-height:1.1}
+.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.catrow{display:grid;grid-template-columns:1fr 64px;gap:4px 10px;align-items:center;margin:8px 0;font-size:14px}
+.catrow .bar{grid-column:1 / 3}
+.catrow span:nth-child(2){text-align:right;color:var(--sub)}
+button{font:inherit;color:inherit}
+.btn{display:block;width:100%;padding:13px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-weight:600;font-size:16px}
+.btn.sub{background:var(--accent-soft);color:var(--text)}
+.btn.warn{background:transparent;border:1px solid var(--warn);color:var(--warn)}
+.btn+.btn{margin-top:8px}
+.datebar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 12px;
+  position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(env(safe-area-inset-top) + 4px) 0 8px;margin-top:calc(-1 * env(safe-area-inset-top) - 12px)}
+.datebar button{width:48px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-size:22px}
+.datebar button:disabled{opacity:.3}
+.datebar .mid{text-align:center;flex:1}
+.datebar .d{font-weight:700;font-size:18px}
+.item{display:flex;gap:12px;align-items:flex-start;padding:10px 2px;border-top:1px solid var(--line);cursor:pointer}
+.item:first-of-type{border-top:none}
+.item input{position:absolute;opacity:0;pointer-events:none}
+.box{flex:0 0 30px;height:30px;border-radius:8px;border:2px solid var(--box);display:flex;align-items:center;justify-content:center;margin-top:-2px;transition:all .12s}
+.item input:checked+.box{background:var(--accent);border-color:var(--accent)}
+.item input:checked+.box::after{content:"";width:9px;height:16px;border:solid #fff;border-width:0 3px 3px 0;transform:rotate(45deg) translate(-1px,-2px)}
+.item .txt{flex:1;font-size:15.5px}
+.item input:checked~.txt{color:var(--sub)}
+textarea,input[type=text],select{width:100%;font:inherit;font-size:16px;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px}
+textarea{min-height:110px;resize:vertical}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:10}
+nav button{flex:1;border:none;background:none;padding:9px 0 8px;font-size:11.5px;color:var(--sub);display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+nav button.on{color:var(--accent);font-weight:600}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.cal .wd{font-size:12px;color:var(--sub)}
+.cal .c{aspect-ratio:1;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;border:1px solid transparent;background:var(--bg)}
+.cal .c small{font-size:10px;opacity:.85}
+.cal .c.today{border-color:var(--accent)}
+.cal .c.future{opacity:.35}
+.calhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.calhead button{border:1px solid var(--line);background:var(--bg);border-radius:10px;width:40px;height:36px;font-size:18px}
+.calhead button:disabled{opacity:.3}
+.seg{display:flex;gap:6px;margin-bottom:10px}
+.seg button{flex:1;padding:7px;border-radius:9px;border:1px solid var(--line);background:var(--bg);font-size:14px}
+.seg button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+svg.chart{width:100%;height:auto;display:block}
+.rank{margin:0;padding:0;list-style:none;font-size:14px}
+.rank li{display:flex;gap:10px;padding:7px 0;border-top:1px solid var(--line)}
+.rank li:first-child{border-top:none}
+.rank b{flex:0 0 46px;text-align:right;color:var(--warn)}
+.edcat{border:1px solid var(--line);border-radius:12px;padding:10px;margin:0 0 10px}
+.edrow{display:flex;gap:6px;align-items:flex-start;margin:6px 0}
+.edrow textarea{min-height:44px;padding:8px;font-size:15px}
+.edrow .tools{display:flex;flex-direction:column;gap:4px}
+.tools button,.mini{border:1px solid var(--line);background:var(--bg);border-radius:8px;min-width:36px;height:30px;font-size:14px;padding:0 8px}
+.mini.del{color:var(--warn)}
+.cathead{display:flex;gap:6px;align-items:center}
+.cathead input{font-weight:700}
+.empty{text-align:center;padding:26px 10px}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 80px);transform:translateX(-50%);background:var(--text);color:var(--bg);padding:9px 16px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
+.toast.show{opacity:.92}
+.notice{background:var(--accent-soft);border-radius:12px;padding:10px 12px;font-size:14px;margin-bottom:12px}
+</style>
+</head>
+<body>
+<main id="view"></main>
+<nav id="tabs">
+  <button data-tab="home"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>ホーム</button>
+  <button data-tab="check"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12l3 3 5-6"/></svg>チェック</button>
+  <button data-tab="history"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-6"/></svg>記録</button>
+  <button data-tab="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>設定</button>
+</nav>
+<div class="toast" id="toast"></div>
+<input type="file" id="fileIn" accept=".json,application/json" style="display:none">
+<script>
+'use strict';
+/* ===== 保存 ===== */
+const LS_KEY = 'selfcheck.v1';
+function defaultState(){ return {version:1, config:{guidelines:[], categories:[], dayStartHour:3}, records:{}, meta:{}}; }
+function load(){
+  try{
+    const s = localStorage.getItem(LS_KEY);
+    if(s){ const o = JSON.parse(s); const d = defaultState();
+      return {...d, ...o, config:{...d.config, ...(o.config||{})}, records:o.records||{}, meta:o.meta||{}}; }
+  }catch(e){ console.error(e); }
+  return defaultState();
+}
+let state = load();
+function save(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+  catch(e){ alert('保存に失敗しました：' + e.message); }
+}
+if(navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(()=>{}); }
+
+/* ===== 便利関数 ===== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const pad = n => String(n).padStart(2,'0');
+const keyOf = d => d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+const parseKey = k => { const [y,m,d] = k.split('-').map(Number); return new Date(y, m-1, d); };
+const addDays = (k,n) => { const d = parseKey(k); d.setDate(d.getDate()+n); return keyOf(d); };
+const todayKey = () => keyOf(new Date(Date.now() - (state.config.dayStartHour||0)*3600e3));
+const WD = '日月火水木金土';
+const fmtKey = k => { const d = parseKey(k); return `${d.getMonth()+1}月${d.getDate()}日（${WD[d.getDay()]}）`; };
+const pct = r => r == null ? '—' : Math.round(r*100) + '%';
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove('show'), 1800); }
+
+/* ===== データ操作 ===== */
+const cats = () => state.config.categories.filter(c => !c.deleted);
+const itemsOf = c => c.items.filter(i => !i.deleted);
+const activeIds = () => cats().flatMap(c => itemsOf(c).map(i => i.id));
+function findItem(id){
+  for(const c of state.config.categories){ const i = c.items.find(x => x.id === id); if(i) return {cat:c, item:i}; }
+  return null;
+}
+// その日の対象項目（記録済みの日は記録時点の項目、それ以外は現在の項目）
+function dayIds(k){
+  const r = state.records[k];
+  if(r && r.ids && k !== todayKey()) return r.ids;
+  return activeIds();
+}
+function touch(k){
+  let r = state.records[k];
+  if(!r) r = state.records[k] = {checks:{}, memo:''};
+  if(!r.ids || k === todayKey()) r.ids = activeIds();
+  r.updated = new Date().toISOString();
+  return r;
+}
+function dayStat(k, catId){
+  const r = state.records[k];
+  let ids = dayIds(k);
+  if(catId) ids = ids.filter(id => { const f = findItem(id); return f && f.cat.id === catId; });
+  if(!ids.length) return {checked:0, total:0, rate:null, recorded:!!r};
+  const checked = r ? ids.filter(id => r.checks[id]).length : 0;
+  return {checked, total:ids.length, rate: checked/ids.length, recorded:!!r};
+}
+function refreshTodayIds(){ const r = state.records[todayKey()]; if(r) r.ids = activeIds(); }
+
+/* ===== 画面切替 ===== */
+let tab = 'home', viewDate = null, histMonth = null, histRange = 30;
+function go(t){ tab = t; document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t)); render(); window.scrollTo(0,0); }
+document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => { if(b.dataset.tab === 'check') viewDate = todayKey(); go(b.dataset.tab); }));
+function render(){ ({home:renderHome, check:renderCheck, history:renderHistory, settings:renderSettings})[tab](); }
+
+/* ===== ホーム ===== */
+function renderHome(){
+  const tk = todayKey(), st = dayStat(tk);
+  const g = state.config.guidelines.filter(s => s.trim());
+  let h = '';
+  if(!cats().length){
+    h += `<h1>セルフチェック</h1><div class="card empty"><p>チェック項目がまだありません。</p>
+      <p class="muted">「設定」から項目ファイルを読み込むか、項目を追加してください。</p>
+      <button class="btn" onclick="go('settings')">設定を開く</button></div>`;
+    $('#view').innerHTML = h; return;
+  }
+  const lb = state.meta.lastBackup ? parseKey(state.meta.lastBackup.slice(0,10)) : null;
+  const days = Object.keys(state.records).length;
+  if(days >= 7 && (!lb || (Date.now() - lb) > 30*864e5)){
+    h += `<div class="notice">最後のバックアップから30日以上たっています。「設定」→「バックアップを書き出す」で保存しておきましょう。</div>`;
+  }
+  if(g.length) h += `<div class="card"><h2>行動指針</h2><ul class="guide">${g.map(s => `<li>${esc(s)}</li>`).join('')}</ul></div>`;
+  h += `<div class="card"><h2>今日の達成 <span class="cnt">${fmtKey(tk)}</span></h2>
+    <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px"><span class="big">${pct(st.rate ?? 0)}</span>
+    <span class="muted">${st.checked} / ${st.total} 項目</span></div>
+    <div class="bar"><i style="width:${(st.rate||0)*100}%"></i></div>
+    <div style="margin-top:12px">${cats().map(c => { const s = dayStat(tk, c.id); return `<div class="catrow"><span>${esc(c.name)}</span><span>${s.checked}/${s.total}</span><div class="bar"><i style="width:${(s.rate||0)*100}%"></i></div></div>`; }).join('')}</div>
+    <div style="margin-top:12px"><button class="btn" onclick="viewDate=todayKey();go('check')">チェックする</button></div></div>`;
+  let sum = 0, n = 0;
+  for(let i = 1; i <= 7; i++){ const s = dayStat(addDays(tk, -i)); if(s.recorded && s.rate != null){ sum += s.rate; n++; } }
+  h += `<div class="card"><h2>直近7日間（今日を除く）</h2><span class="big" style="font-size:28px">${n ? pct(sum/n) : '—'}</span> <span class="muted">平均達成率・記録 ${n} 日</span></div>`;
+  $('#view').innerHTML = h;
+}
+
+/* ===== チェック ===== */
+function renderCheck(){
+  const tk = todayKey();
+  if(!viewDate) viewDate = tk;
+  const k = viewDate, ids = dayIds(k), r = state.records[k];
+  const idset = new Set(ids);
+  let h = `<div class="datebar"><button id="prev" aria-label="前の日">‹</button>
+    <div class="mid"><div class="d">${fmtKey(k)}${k === tk ? '　今日' : ''}</div><div class="muted" id="sumline"></div></div>
+    <button id="next" aria-label="次の日" ${k >= tk ? 'disabled' : ''}>›</button></div>`;
+  if(!ids.length){ h += `<div class="card empty"><p>チェック項目がありません。</p><button class="btn" onclick="go('settings')">設定を開く</button></div>`; }
+  for(const c of state.config.categories){
+    const its = c.items.filter(i => idset.has(i.id));
+    if(!its.length) continue;
+    h += `<section class="card"><h2>${esc(c.name)} <span class="cnt" data-cat="${c.id}"></span></h2>`;
+    for(const it of its){
+      h += `<label class="item"><input type="checkbox" data-id="${it.id}" ${r && r.checks[it.id] ? 'checked' : ''}><span class="box"></span><span class="txt">${esc(it.text)}</span></label>`;
+    }
+    h += `</section>`;
+  }
+  if(ids.length) h += `<section class="card"><h2>気づきメモ <span class="cnt">任意</span></h2><textarea id="memo" placeholder="振り返りや気づきを自由に記録">${esc(r ? r.memo : '')}</textarea></section>`;
+  $('#view').innerHTML = h;
+  const upd = () => {
+    const s = dayStat(k);
+    $('#sumline').textContent = `${s.checked} / ${s.total}　${pct(s.rate ?? 0)}`;
+    document.querySelectorAll('[data-cat]').forEach(el => { const cs = dayStat(k, el.dataset.cat); el.textContent = `${cs.checked}/${cs.total}`; });
+  };
+  upd();
+  $('#prev').onclick = () => { viewDate = addDays(k, -1); renderCheck(); };
+  $('#next').onclick = () => { if(k < tk){ viewDate = addDays(k, 1); renderCheck(); } };
+  document.querySelectorAll('.item input').forEach(cb => cb.addEventListener('change', () => {
+    const rec = touch(k);
+    if(cb.checked) rec.checks[cb.dataset.id] = true; else delete rec.checks[cb.dataset.id];
+    save(); upd();
+  }));
+  const memo = $('#memo');
+  if(memo){ let t; memo.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => {
+    if(!state.records[k] && !memo.value.trim()) return;
+    touch(k).memo = memo.value; save(); }, 400); });
+    memo.addEventListener('blur', () => { if(state.records[k] || memo.value.trim()){ touch(k).memo = memo.value; save(); } });
+  }
+}
+
+/* ===== 記録 ===== */
+function renderHistory(){
+  const tk = todayKey();
+  if(!histMonth) histMonth = tk.slice(0,7);
+  const [y, m] = histMonth.split('-').map(Number);
+  const first = new Date(y, m-1, 1), dim = new Date(y, m, 0).getDate();
+  let h = `<h1>記録</h1><div class="card"><div class="calhead"><button id="pm">‹</button><b>${y}年${m}月</b><button id="nm" ${histMonth >= tk.slice(0,7) ? 'disabled' : ''}>›</button></div><div class="cal">`;
+  h += [...WD].map(w => `<div class="wd">${w}</div>`).join('');
+  for(let i = 0; i < first.getDay(); i++) h += '<div></div>';
+  for(let d = 1; d <= dim; d++){
+    const k = `${y}-${pad(m)}-${pad(d)}`, s = dayStat(k);
+    const fut = k > tk;
+    const bg = (!fut && s.recorded && s.rate != null) ? `background:color-mix(in srgb, var(--accent) ${Math.round(15 + s.rate*85)}%, var(--bg));color:${s.rate > .5 ? '#fff' : 'inherit'}` : '';
+    h += `<div class="c ${k === tk ? 'today' : ''} ${fut ? 'future' : ''}" style="${bg}" data-k="${fut ? '' : k}">${d}<small>${!fut && s.recorded ? pct(s.rate) : ''}</small></div>`;
+  }
+  h += `</div><p class="muted" style="margin:8px 0 0">日付をタップすると、その日のチェックを確認・修正できます。</p></div>`;
+
+  // 推移グラフ
+  const days = []; for(let i = histRange - 1; i >= 0; i--) days.push(addDays(tk, -i));
+  const vals = days.map(k => { const s = dayStat(k); return s.recorded ? s.rate : null; });
+  h += `<div class="card"><h2>達成率の推移</h2><div class="seg">${[30,90,365].map(n => `<button data-r="${n}" class="${n === histRange ? 'on' : ''}">${n === 365 ? '1年' : n + '日'}</button>`).join('')}</div>${chartSvg(days, vals)}
+    <p class="muted" style="margin:6px 0 0">点：日別　線：7日移動平均（記録のある日のみ）</p></div>`;
+
+  // カテゴリ別
+  h += `<div class="card"><h2>カテゴリ別の平均 <span class="cnt">期間内</span></h2>`;
+  for(const c of state.config.categories){
+    let ch = 0, tot = 0;
+    for(const k of days){ if(!state.records[k]) continue; const s = dayStat(k, c.id); ch += s.checked; tot += s.total; }
+    if(!tot && c.deleted) continue;
+    h += `<div class="catrow"><span>${esc(c.name)}${c.deleted ? '（削除済）' : ''}</span><span>${tot ? pct(ch/tot) : '—'}</span><div class="bar"><i style="width:${tot ? ch/tot*100 : 0}%"></i></div></div>`;
+  }
+  h += `</div>`;
+
+  // 達成しにくい項目
+  const agg = {};
+  for(const k of days){ const r = state.records[k]; if(!r) continue;
+    for(const id of dayIds(k)){ (agg[id] ||= {c:0, t:0}); agg[id].t++; if(r.checks[id]) agg[id].c++; } }
+  const rank = Object.entries(agg).filter(([,v]) => v.t >= 3).map(([id,v]) => ({id, r:v.c/v.t})).sort((a,b) => a.r - b.r).slice(0,5);
+  h += `<div class="card"><h2>できていない項目 <span class="cnt">達成率の低い順</span></h2>`;
+  h += rank.length ? `<ul class="rank">${rank.map(x => { const f = findItem(x.id); return `<li><b>${pct(x.r)}</b><span>${esc(f ? f.item.text : x.id)}</span></li>`; }).join('')}</ul>` : `<p class="muted" style="margin:0">記録が3日分以上たまると表示されます。</p>`;
+  h += `</div>`;
+  $('#view').innerHTML = h;
+
+  $('#pm').onclick = () => { histMonth = keyOf(new Date(y, m-2, 1)).slice(0,7); renderHistory(); };
+  $('#nm').onclick = () => { histMonth = keyOf(new Date(y, m, 1)).slice(0,7); renderHistory(); };
+  document.querySelectorAll('.cal .c[data-k]').forEach(el => { if(el.dataset.k) el.onclick = () => { viewDate = el.dataset.k; go('check'); }; });
+  document.querySelectorAll('.seg button').forEach(b => b.onclick = () => { histRange = +b.dataset.r; renderHistory(); });
+}
+function chartSvg(days, vals){
+  const W = 600, H = 220, L = 34, R = 8, T = 10, B = 26, n = days.length;
+  const x = i => L + (n === 1 ? 0 : i * (W - L - R) / (n - 1));
+  const yv = v => T + (1 - v) * (H - T - B);
+  let s = `<svg class="chart" viewBox="0 0 ${W} ${H}">`;
+  for(const g of [0, .25, .5, .75, 1]){
+    s += `<line x1="${L}" x2="${W-R}" y1="${yv(g)}" y2="${yv(g)}" stroke="var(--line)" stroke-width="1"/>`;
+    s += `<text x="${L-6}" y="${yv(g)+4}" font-size="11" fill="var(--sub)" text-anchor="end">${g*100}%</text>`;
+  }
+  const step = Math.ceil(n / 5);
+  for(let i = 0; i < n; i += step){ const d = parseKey(days[i]); s += `<text x="${x(i)}" y="${H-8}" font-size="11" fill="var(--sub)" text-anchor="middle">${d.getMonth()+1}/${d.getDate()}</text>`; }
+  // 7日移動平均
+  let path = '', pen = false;
+  for(let i = 0; i < n; i++){
+    const w = vals.slice(Math.max(0, i-6), i+1).filter(v => v != null);
+    if(vals[i] == null || !w.length){ pen = false; continue; }
+    const v = w.reduce((a,b) => a+b, 0) / w.length;
+    path += (pen ? 'L' : 'M') + x(i).toFixed(1) + ' ' + yv(v).toFixed(1) + ' '; pen = true;
+  }
+  if(path) s += `<path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>`;
+  const rad = n > 120 ? 1.6 : 3;
+  vals.forEach((v,i) => { if(v != null) s += `<circle cx="${x(i)}" cy="${yv(v)}" r="${rad}" fill="var(--accent)" opacity=".45"/>`; });
+  if(!vals.some(v => v != null)) s += `<text x="${W/2}" y="${H/2}" text-anchor="middle" font-size="14" fill="var(--sub)">この期間の記録はまだありません</text>`;
+  return s + '</svg>';
+}
+
+/* ===== 設定 ===== */
+function renderSettings(){
+  let h = `<h1>設定</h1>`;
+  h += `<div class="card"><h2>チェック項目</h2><p class="muted" style="margin-top:0">文章は直接書き換えられます。削除した項目の過去の記録は残ります。</p>`;
+  const cs = cats();
+  cs.forEach((c, ci) => {
+    h += `<div class="edcat"><div class="cathead"><input type="text" value="${esc(c.name)}" data-catname="${c.id}">
+      <button class="mini" data-cup="${c.id}" ${ci === 0 ? 'disabled' : ''}>↑</button><button class="mini" data-cdown="${c.id}" ${ci === cs.length-1 ? 'disabled' : ''}>↓</button><button class="mini del" data-cdel="${c.id}">削除</button></div>`;
+    const its = itemsOf(c);
+    its.forEach((it, ii) => {
+      h += `<div class="edrow"><textarea rows="2" data-itext="${it.id}">${esc(it.text)}</textarea><div class="tools">
+        <button data-iup="${it.id}" ${ii === 0 ? 'disabled' : ''}>↑</button><button data-idown="${it.id}" ${ii === its.length-1 ? 'disabled' : ''}>↓</button><button class="del" data-idel="${it.id}" style="color:var(--warn)">✕</button></div></div>`;
+    });
+    h += `<button class="mini" data-iadd="${c.id}" style="margin-top:4px">＋ 項目を追加</button></div>`;
+  });
+  h += `<button class="btn sub" id="addCat">＋ カテゴリを追加</button></div>`;
+
+  h += `<div class="card"><h2>行動指針</h2><p class="muted" style="margin-top:0">1行に1つ書いてください。ホーム画面に表示されます。</p>
+    <textarea id="guides" style="min-height:150px">${esc(state.config.guidelines.join('\n'))}</textarea></div>`;
+
+  h += `<div class="card"><h2>日付の切り替え時刻</h2><p class="muted" style="margin-top:0">この時刻より前の記録は前日分になります。</p>
+    <select id="dsh">${[0,1,2,3,4,5,6].map(v => `<option value="${v}" ${v === state.config.dayStartHour ? 'selected' : ''}>午前${v}時</option>`).join('')}</select></div>`;
+
+  const nDays = Object.keys(state.records).length;
+  h += `<div class="card"><h2>データ</h2>
+    <p class="muted" style="margin-top:0">記録日数：${nDays} 日　／　最終バックアップ：${state.meta.lastBackup ? state.meta.lastBackup.slice(0,10) : 'なし'}<br>
+    データはこのiPhoneの中だけに保存され、どこにも送信されません。<span id="persist"></span></p>
+    <button class="btn" id="csv">CSVを書き出す</button>
+    <button class="btn sub" id="bk">バックアップを書き出す</button>
+    <button class="btn sub" id="rs">バックアップから復元</button>
+    <button class="btn sub" id="imp">項目ファイルを読み込む</button></div>`;
+  h += `<p class="muted" style="text-align:center">セルフチェック v1.0</p>`;
+  $('#view').innerHTML = h;
+
+  if(navigator.storage && navigator.storage.persisted) navigator.storage.persisted().then(p => { const el = $('#persist'); if(el) el.textContent = p ? '（保護モード：有効）' : ''; });
+
+  const changed = (msg) => { refreshTodayIds(); save(); if(msg) toast(msg); };
+  const find = id => findItem(id);
+  document.querySelectorAll('[data-catname]').forEach(el => el.onchange = () => { const c = state.config.categories.find(x => x.id === el.dataset.catname); c.name = el.value.trim() || c.name; changed('保存しました'); });
+  document.querySelectorAll('[data-itext]').forEach(el => el.onchange = () => { const f = find(el.dataset.itext); if(el.value.trim()){ f.item.text = el.value.trim(); changed('保存しました'); } });
+  const move = (arr, obj, dir, pred) => { const vis = arr.filter(pred); const i = vis.indexOf(obj), j = i + dir; if(j < 0 || j >= vis.length) return;
+    const a = arr.indexOf(vis[i]), b = arr.indexOf(vis[j]); [arr[a], arr[b]] = [arr[b], arr[a]]; };
+  document.querySelectorAll('[data-cup],[data-cdown]').forEach(el => el.onclick = () => { const id = el.dataset.cup || el.dataset.cdown; const c = state.config.categories.find(x => x.id === id);
+    move(state.config.categories, c, el.dataset.cup ? -1 : 1, x => !x.deleted); changed(); renderSettings(); });
+  document.querySelectorAll('[data-iup],[data-idown]').forEach(el => el.onclick = () => { const f = find(el.dataset.iup || el.dataset.idown);
+    move(f.cat.items, f.item, el.dataset.iup ? -1 : 1, x => !x.deleted); changed(); renderSettings(); });
+  document.querySelectorAll('[data-cdel]').forEach(el => el.onclick = () => { const c = state.config.categories.find(x => x.id === el.dataset.cdel);
+    if(confirm(`カテゴリ「${c.name}」と、その中の項目を削除しますか？（過去の記録は残ります）`)){ c.deleted = true; changed('削除しました'); renderSettings(); } });
+  document.querySelectorAll('[data-idel]').forEach(el => el.onclick = () => { const f = find(el.dataset.idel);
+    if(confirm(`「${f.item.text}」を削除しますか？（過去の記録は残ります）`)){ f.item.deleted = true; changed('削除しました'); renderSettings(); } });
+  document.querySelectorAll('[data-iadd]').forEach(el => el.onclick = () => { const t = prompt('追加する項目'); if(!t || !t.trim()) return;
+    const c = state.config.categories.find(x => x.id === el.dataset.iadd); c.items.push({id:uid('i'), text:t.trim()}); changed('追加しました'); renderSettings(); });
+  $('#addCat').onclick = () => { const t = prompt('カテゴリ名'); if(!t || !t.trim()) return; state.config.categories.push({id:uid('c'), name:t.trim(), items:[]}); changed('追加しました'); renderSettings(); };
+  $('#guides').onchange = e => { state.config.guidelines = e.target.value.split('\n').map(s => s.trim()).filter(Boolean); save(); toast('保存しました'); };
+  $('#dsh').onchange = e => { state.config.dayStartHour = +e.target.value; save(); toast('保存しました'); };
+  $('#csv').onclick = exportCsv;
+  $('#bk').onclick = exportBackup;
+  $('#rs').onclick = () => pickFile(restoreBackup);
+  $('#imp').onclick = () => pickFile(importConfig);
+}
+
+/* ===== ファイル入出力 ===== */
+function pickFile(cb){ const fi = $('#fileIn'); fi.value = ''; fi.onchange = () => { const f = fi.files[0]; if(!f) return;
+  const rd = new FileReader(); rd.onload = () => { try{ cb(JSON.parse(rd.result)); }catch(e){ alert('ファイルを読み込めませんでした：' + e.message); } }; rd.readAsText(f, 'utf-8'); }; fi.click(); }
+async function saveFiles(files){
+  const fs = files.map(f => new File([f.text], f.name, {type:f.type}));
+  if(navigator.canShare && navigator.canShare({files:fs})){
+    try{ await navigator.share({files:fs}); return true; }
+    catch(e){ if(e.name === 'AbortError') return false; }
+  }
+  for(const f of fs){ const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000); }
+  return true;
+}
+const stamp = () => keyOf(new Date()).replace(/-/g,'');
+const cell = v => { const s = String(v ?? ''); return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
+const toCsv = rows => '﻿' + rows.map(r => r.map(cell).join(',')).join('\r\n') + '\r\n';
+function exportCsv(){
+  const keys = Object.keys(state.records).sort();
+  if(!keys.length){ alert('まだ記録がありません。'); return; }
+  const checks = [['date','category_id','category','item_id','item','checked']];
+  const daily = [['date','checked','total','rate','memo']];
+  for(const k of keys){
+    const r = state.records[k];
+    for(const id of dayIds(k)){ const f = findItem(id); checks.push([k, f ? f.cat.id : '', f ? f.cat.name : '', id, f ? f.item.text : '', r.checks[id] ? 1 : 0]); }
+    const s = dayStat(k); daily.push([k, s.checked, s.total, s.rate == null ? '' : s.rate.toFixed(4), r.memo || '']);
+  }
+  const items = [['category_id','category','item_id','item','status','order']];
+  state.config.categories.forEach((c, ci) => c.items.forEach((it, ii) => items.push([c.id, c.name, it.id, it.text, (c.deleted || it.deleted) ? 'deleted' : 'active', `${ci+1}-${ii+1}`])));
+  const st = stamp();
+  saveFiles([
+    {name:`selfcheck_checks_${st}.csv`, text:toCsv(checks), type:'text/csv'},
+    {name:`selfcheck_daily_${st}.csv`, text:toCsv(daily), type:'text/csv'},
+    {name:`selfcheck_items_${st}.csv`, text:toCsv(items), type:'text/csv'}
+  ]);
+}
+async function exportBackup(){
+  const ok = await saveFiles([{name:`selfcheck_backup_${stamp()}.json`, text:JSON.stringify({type:'selfcheck-backup', exported:new Date().toISOString(), state}, null, 1), type:'application/json'}]);
+  if(ok){ state.meta.lastBackup = new Date().toISOString(); save(); if(tab === 'settings') renderSettings(); }
+}
+function restoreBackup(o){
+  const s = o && o.type === 'selfcheck-backup' ? o.state : null;
+  if(!s || !s.config || !s.records){ alert('バックアップファイルではありません。'); return; }
+  if(!confirm(`${Object.keys(s.records).length} 日分の記録を復元します。現在のデータは置き換えられます。よろしいですか？`)) return;
+  const d = defaultState(); state = {...d, ...s, config:{...d.config, ...s.config}, meta:s.meta || {}}; save(); toast('復元しました'); go('home');
+}
+function importConfig(o){
+  if(!o || o.type !== 'selfcheck-config' || !Array.isArray(o.categories)){ alert('項目ファイルではありません。'); return; }
+  const has = cats().length > 0;
+  if(has && !confirm('現在のチェック項目と行動指針を、ファイルの内容で置き換えますか？（過去の記録は残ります）')) return;
+  const newCats = o.categories.map(c => ({id:c.id || uid('c'), name:c.name, items:(c.items||[]).map(i => typeof i === 'string' ? {id:uid('i'), text:i} : {id:i.id || uid('i'), text:i.text})}));
+  const newIds = new Set(newCats.map(c => c.id));
+  // 既存カテゴリでファイルに無いものは「削除済」として残し、過去記録の項目名を保持する
+  for(const c of state.config.categories){ if(!newIds.has(c.id)) newCats.push({...c, deleted:true}); }
+  for(const nc of newCats){ if(nc.deleted) continue; const old = state.config.categories.find(c => c.id === nc.id); if(!old) continue;
+    const ids = new Set(nc.items.map(i => i.id)); for(const it of old.items){ if(!ids.has(it.id)) nc.items.push({...it, deleted:true}); } }
+  state.config.categories = newCats;
+  if(Array.isArray(o.guidelines)) state.config.guidelines = o.guidelines;
+  refreshTodayIds(); save(); toast('読み込みました'); go('home');
+}
+
+/* ===== 起動 ===== */
+document.addEventListener('visibilitychange', () => { if(!document.hidden && tab !== 'settings') render(); });
+if('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(()=>{});
+go('home');
+</script>
+</body>
+</html>
