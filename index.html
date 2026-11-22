@@ -109,7 +109,7 @@ svg.chart{width:100%;height:auto;display:block}
 'use strict';
 /* ===== 保存 ===== */
 const LS_KEY = 'selfcheck.v1';
-function defaultState(){ return {version:1, config:{guidelines:[], categories:[], dayStartHour:3}, records:{}, meta:{}}; }
+function defaultState(){ return {version:1, config:{guidelines:[], goal:'', categories:[], dayStartHour:3}, records:{}, meta:{}}; }
 function load(){
   try{
     const s = localStorage.getItem(LS_KEY);
@@ -187,7 +187,6 @@ function render(){ ({home:renderHome, check:renderCheck, history:renderHistory, 
 
 /* ===== ホーム ===== */
 function renderHome(){
-  const tk = todayKey(), st = dayStat(tk);
   const g = state.config.guidelines.filter(s => s.trim());
   let h = '';
   if(!cats().length){
@@ -202,15 +201,9 @@ function renderHome(){
     h += `<div class="notice">最後のバックアップから30日以上たっています。「設定」→「バックアップを書き出す」で保存しておきましょう。</div>`;
   }
   if(g.length) h += `<div class="card"><h2>行動指針</h2><ul class="guide">${g.map(s => `<li>${esc(s)}</li>`).join('')}</ul></div>`;
-  h += `<div class="card"><h2>今日の達成 <span class="cnt">${fmtKey(tk)}</span></h2>
-    <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px"><span class="big">${pct(st.rate)}</span>
-    <span class="muted">できた ${st.ok}　できなかった ${st.ng}　機会なし ${st.none}</span></div>
-    <div class="bar"><i style="width:${(st.rate||0)*100}%"></i></div>
-    <div style="margin-top:12px">${cats().map(c => { const s = dayStat(tk, c.id); return `<div class="catrow"><span>${esc(c.name)}</span><span>${pct(s.rate)}</span><div class="bar"><i style="width:${(s.rate||0)*100}%"></i></div></div>`; }).join('')}</div>
-    <div style="margin-top:12px"><button class="btn" onclick="viewDate=todayKey();go('check')">チェックする</button></div></div>`;
-  let ok = 0, ng = 0, n = 0;
-  for(let i = 1; i <= 7; i++){ const s = dayStat(addDays(tk, -i)); if(s.recorded){ ok += s.ok; ng += s.ng; n++; } }
-  h += `<div class="card"><h2>直近7日間（今日を除く）</h2><span class="big" style="font-size:28px">${(ok+ng) ? pct(ok/(ok+ng)) : '—'}</span> <span class="muted">達成率・○${ok} ✕${ng}・記録 ${n} 日</span></div>`;
+  const goal = (state.config.goal || '').trim();
+  if(goal) h += `<div class="card"><h2>目標</h2><div style="font-size:17px;font-weight:600;white-space:pre-wrap">${esc(goal)}</div></div>`;
+  h += `<button class="btn" onclick="viewDate=todayKey();go('check')">チェックする</button>`;
   $('#view').innerHTML = h;
 }
 
@@ -267,7 +260,16 @@ function renderHistory(){
   if(!histMonth) histMonth = tk.slice(0,7);
   const [y, m] = histMonth.split('-').map(Number);
   const first = new Date(y, m-1, 1), dim = new Date(y, m, 0).getDate();
-  let h = `<h1>記録</h1><div class="card"><div class="calhead"><button id="pm">‹</button><b>${y}年${m}月</b><button id="nm" ${histMonth >= tk.slice(0,7) ? 'disabled' : ''}>›</button></div><div class="cal">`;
+  const st = dayStat(tk);
+  let h = `<h1>記録</h1><div class="card"><h2>今日の達成 <span class="cnt">${fmtKey(tk)}</span></h2>
+    <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px"><span class="big">${pct(st.rate)}</span>
+    <span class="muted">できた ${st.ok}　できなかった ${st.ng}　機会なし ${st.none}</span></div>
+    <div class="bar"><i style="width:${(st.rate||0)*100}%"></i></div>
+    <div style="margin-top:12px">${cats().map(c => { const s = dayStat(tk, c.id); return `<div class="catrow"><span>${esc(c.name)}</span><span>${pct(s.rate)}</span><div class="bar"><i style="width:${(s.rate||0)*100}%"></i></div></div>`; }).join('')}</div></div>`;
+  { let ok = 0, ng = 0, n = 0;
+    for(let i = 1; i <= 7; i++){ const s = dayStat(addDays(tk, -i)); if(s.recorded){ ok += s.ok; ng += s.ng; n++; } }
+    h += `<div class="card"><h2>直近7日間（今日を除く）</h2><span class="big" style="font-size:28px">${(ok+ng) ? pct(ok/(ok+ng)) : '—'}</span> <span class="muted">達成率・○${ok} ✕${ng}・記録 ${n} 日</span></div>`; }
+  h += `<div class="card"><div class="calhead"><button id="pm">‹</button><b>${y}年${m}月</b><button id="nm" ${histMonth >= tk.slice(0,7) ? 'disabled' : ''}>›</button></div><div class="cal">`;
   h += [...WD].map(w => `<div class="wd">${w}</div>`).join('');
   for(let i = 0; i < first.getDay(); i++) h += '<div></div>';
   for(let d = 1; d <= dim; d++){
@@ -355,6 +357,8 @@ function renderSettings(){
 
   h += `<div class="card"><h2>行動指針</h2><p class="muted" style="margin-top:0">1行に1つ書いてください。ホーム画面に表示されます。</p>
     <textarea id="guides" style="min-height:150px">${esc(state.config.guidelines.join('\n'))}</textarea></div>`;
+  h += `<div class="card"><h2>目標</h2><p class="muted" style="margin-top:0">ホーム画面の行動指針の下に表示されます。</p>
+    <textarea id="goal" style="min-height:70px">${esc(state.config.goal || '')}</textarea></div>`;
 
   h += `<div class="card"><h2>日付の切り替え時刻</h2><p class="muted" style="margin-top:0">この時刻より前の記録は前日分になります。</p>
     <select id="dsh">${[0,1,2,3,4,5,6].map(v => `<option value="${v}" ${v === state.config.dayStartHour ? 'selected' : ''}>午前${v}時</option>`).join('')}</select></div>`;
@@ -367,7 +371,7 @@ function renderSettings(){
     <button class="btn sub" id="bk">バックアップを書き出す</button>
     <button class="btn sub" id="rs">バックアップから復元</button>
     <button class="btn sub" id="imp">項目ファイルを読み込む</button></div>`;
-  h += `<p class="muted" style="text-align:center">セルフチェック v1.2</p>`;
+  h += `<p class="muted" style="text-align:center">セルフチェック v1.3</p>`;
   $('#view').innerHTML = h;
 
   if(navigator.storage && navigator.storage.persisted) navigator.storage.persisted().then(p => { const el = $('#persist'); if(el) el.textContent = p ? '（保護モード：有効）' : ''; });
@@ -390,6 +394,7 @@ function renderSettings(){
     const c = state.config.categories.find(x => x.id === el.dataset.iadd); c.items.push({id:uid('i'), text:t.trim()}); changed('追加しました'); renderSettings(); });
   $('#addCat').onclick = () => { const t = prompt('カテゴリ名'); if(!t || !t.trim()) return; state.config.categories.push({id:uid('c'), name:t.trim(), items:[]}); changed('追加しました'); renderSettings(); };
   $('#guides').onchange = e => { state.config.guidelines = e.target.value.split('\n').map(s => s.trim()).filter(Boolean); save(); toast('保存しました'); };
+  $('#goal').onchange = e => { state.config.goal = e.target.value.trim(); save(); toast('保存しました'); };
   $('#dsh').onchange = e => { state.config.dayStartHour = +e.target.value; save(); toast('保存しました'); };
   $('#csv').onclick = exportCsv;
   $('#bk').onclick = exportBackup;
@@ -453,6 +458,7 @@ function importConfig(o){
     const ids = new Set(nc.items.map(i => i.id)); for(const it of old.items){ if(!ids.has(it.id)) nc.items.push({...it, deleted:true}); } }
   state.config.categories = newCats;
   if(Array.isArray(o.guidelines)) state.config.guidelines = o.guidelines;
+  if(typeof o.goal === 'string') state.config.goal = o.goal;
   refreshTodayIds(); save(); toast('読み込みました'); go('home');
 }
 
